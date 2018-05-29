@@ -1,9 +1,8 @@
-#!/bin/bash 
+#!/bin/bash
 
-CHECKOUTS_FOLDER=/checkouts
+CHECKOUTS_FOLDER=/home/wfcore/checkouts
 
 docker run \
 	-v  wfcore-release-checkouts:$CHECKOUTS_FOLDER \
 	-it wildfly-core-build-temp \
-	./file-util.sh "more" $1
-
+	/home/wfcore/file-util.sh "more" $1

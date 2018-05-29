@@ -1,10 +1,11 @@
-#!/bin/bash 
+#!/bin/bash
 
 docker run \
-	-v ~/.m2/settings.xml:/root/.m2/settings.xml \
-	-v wfcore-release-maven-repo:/root/.m2 \
-	-v  wfcore-release-checkouts:/checkouts \
-	-v ~/.ssh:/root/.ssh \
+  --memory=4G \
+	-v ~/.m2/settings.xml:/home/wfcore/.m2/settings.xml \
+	-v wfcore-release-maven-repo:/home/wfcore/.m2 \
+	-v  wfcore-release-checkouts:/home/wfcore/checkouts \
+	-v ~/.gitconfig:/home/wfcore/.gitconfig \
+	-v ~/.ssh:/home/wfcore/.ssh \
 	-it wildfly-core-build-temp \
-        bash	
-
+  bash

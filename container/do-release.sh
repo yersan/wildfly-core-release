@@ -1,173 +1,214 @@
-#!/bin/bash 
+#!/bin/bash
 
+###################################
+# WildFly Core Release Process
+###################################
+#
+# This script is used to create releases of WildFly Core.
+# It accepts 4 parameters:
+# 1. the current version in the POMs (something like 5.0.0.Alpha1-SNAPSHOT)
+# 2. the version to release (e.g. 5.0.0.Alpha1)
+# 3. the next version after the release (e.g. 5.0.0.Beta1-SNAPSHOT)
+# 4. the GitHub user that will contains the branch and tag used to create the release
+#
+# This script does *not* push anything to the WildFly GitHub repositories.
+# Commits and tag are stored in the user GitHub repo and he/she will have to push
+# the tag and the release branch in separate steps after the script is finished.
+#
+# The script requires to *close* the Nexus stating repositories to test WildFly
+# with the tentative Core releases.
+#
+# /!\ Releasing the Nexus repository must be done after the script is finished.
+#
+###################################
+
+# For debugging purpose
+#set -x
+
+################################
+# Prompt user for confirmation
+#
+# Accept an optional prompt message (else "Continue?" is displayed)
+#
+# Return 0 if user confirmed (by typing y or Y)
+# Return 1 if user did not confirm (by typing n or N)
+################################
+prompt_confirm() {
+  while true; do
+    read -r -n 1 -p "${1:-Continue?} [y/n]: " REPLY
+    case $REPLY in
+      [yY]) echo ; return 0 ;;
+      [nN]) echo ; return 1 ;;
+      *) printf " \033[31m %s \n\033[0m" "invalid input"
+    esac
+  done
+}
+
+################################
+# Clone a Git repo from the wildfly org and update to latest master branch
+# Add a remote endpoint for the user GitHub repository
+#
+# 1st parameter is the user name of the GitHub repo (e.g. jmesnil or kabir)
+# 2nd parameter is the name of the project (e.g. wildfly-core)
+################################
+git_clone_and_update() {
+  user=$1
+  project=$2
+
+  #Check if the project has been checked out and clone or update
+  if [ ! -d "${HOME}/checkouts/${project}" ]; then
+    upstream_url="${OFFICIAL_GITHUB_REPO}/${project}.git"
+    user_url="git@github.com:${user}/${project}.git"
+    echo "=================================================================================================="
+    echo "The ${project} checkout folder does not exist. Cloning ${upstream_url}"
+    echo "=================================================================================================="
+    git clone --depth 5 $upstream_url
+    echo "===================================================="
+    echo "Adding the remote ${user} for ${user_url} repository"
+    echo "===================================================="
+    cd ${project}
+    git remote add ${user} ${user_url}
+    cd ..
+  else
+    echo "=================================================================================================="
+    echo "The ${project} checkout folder exists. Refreshing the latest"
+    echo "=================================================================================================="
+    cd ${project}
+    git checkout master
+    git fetch origin
+    git reset --hard origin/master
+    cd ..
+  fi
+}
+
+################################
+# Change the version of the Core modules
+#
+# 1st parameter is the *current* version
+# 2nd parameter is the *next* version
+################################
+change_core_version() {
+  current_version=$1
+  next_version=$2
+
+  # Now replace the versions in the poms
+  echo ""
+  echo "=================================================================================================="
+  echo " Replacing ${current_version} with ${next_version} in the poms"
+  echo "=================================================================================================="
+  echo ""
+  find . -type f -name "pom.xml" -print0 | xargs -0 -t sed -i -e "s/${current_version}/${next_version}/g"
+  echo ""
+  echo "=================================================================================================="
+  echo " Modified files"
+  echo "=================================================================================================="
+  echo ""
+  git status
+}
+
+################################
+# Command Arguments
+################################
 FROM_VERSION=$1
 TO_VERSION=$2
-GITHUB_USER=$3
+NEXT_VERSION=$3
+GITHUB_USER=$4
+GITHUB_USER_REPO=git@github.com:${GITHUB_USER}
+OFFICIAL_GITHUB_REPO=git@github.com:wildfly
 
+cd $HOME
 if [ "x$FROM_VERSION" = "x" ]; then
-	echo "No from version is set"
+	echo "from version is not set"
 	exit 1
 fi
 
 if [ "x$TO_VERSION" = "x" ]; then
-	echo "No to version is set"
+	echo "to version is not set"
 	exit 1
 fi
 
-GITHUB_REPO=git@github.com:kabir
+if [ "x$NEXT_VERSION" = "x" ]; then
+	echo "next version is not set"
+	exit 1
+fi
 
+if [ "x$GITHUB_USER" = "x" ]; then
+	echo "GitHub user is not set"
+	exit 1
+fi
 
-echo Upgrading from $FROM_VERSION to $TO_VERSION
+echo "=================================================================================================="
+echo "You are preparing to release WildFly Core ${TO_VERSION} at ${GITHUB_USER_REPO}"
+echo "    from ${FROM_VERSION}"
+echo "    and prepare next release ${NEXT_VERSION}"
+echo "=================================================================================================="
+prompt_confirm || exit 1
 
 #Check that the checkouts folder was mapped, if not create a temp one and cd into it
-if [ ! -d "/checkouts" ]; then
-    echo "No checkouts folder was exists so creating a temp one. To cache this in the furure between all jobs:"
+if [ ! -d "${HOME}/checkouts" ]; then
+    echo "No checkouts folder was exists so creating a temp one. To cache this in the future between all jobs:"
     echo "-Create a persistent docker volume which can be reused by running (this only needs doing once):"
-    echo "  docker create --name wfcore-release-checkouts"
+    echo "     docker volume create --name wfcore-release-checkouts"
     echo "-Pass in the following parameter to docker run to reuse the checkouts folder:"
-    echo "   -v wfcore-release-checkouts:/checkouts"
-    mkdir /checkouts
+    echo "   -v wfcore-release-checkouts:/home/wfcore/checkouts"
+    mkdir $HOME/checkouts
 fi
-cd /checkouts
+cd $HOME/checkouts
 
+# Start SSH agent to avoid typing everytime the SSH passphrase
+eval `ssh-agent -s`
 
+git_clone_and_update ${GITHUB_USER} "wildfly"
+git_clone_and_update ${GITHUB_USER} "wildfly-core"
 
-#Check if the wildfly checkout folder exists, and clone or update
-if [ ! -d "/checkouts/wildfly" ]; then
-    echo "The wildfly checkout folder does not exist. Cloning $GITHUB_REPO/wildfly.git"
-    git clone $GITHUB_REPO/wildfly.git
-fi
-
-
-#Check if the wildfly-core checkout folder exists, and clone or update
-if [ ! -d "/checkouts/wildfly-core" ]; then
-    echo "The wildfly-core checkout folder does not exist. Cloning $GITHUB_REPO/wildfly-core.git"
-    git clone $GITHUB_REPO/wildfly-core.git
-    cd wildfly-core
-else
-    echo "The wildfly-core checkout folder exists. Refreshing the latest"
-    cd wildfly-core
-    git reset --hard HEAD^
-    git checkout master
-    git fetch origin
-    git reset --hard origin/master
-fi
-
-
-BRANCH_NAME=rel$TO_VERSION
+cd wildfly-core
+BRANCH_NAME=release_wildfly-core_${TO_VERSION}
 #TODO this will give an error, but nothing serious if $BRANCH_NAME does not exist. It would be nice though to check somehow and only delete if it exists
-git branch -D $BRANCH_NAME
-git checkout -b $BRANCH_NAME
+git branch -D ${BRANCH_NAME}
+git checkout -b ${BRANCH_NAME}
 git status
 
-# Change the versions!
-FROM_COUNT=`git grep "$FROM_VERSION" | wc -l`
-if [ $FROM_COUNT -lt 10 ]; then
-    echo "Only $FROM_COUNT references to $FROM_VERSION were found in exisiting poms. As a sanity check we look for at least five of those. Make sure you used the correct 'from' version."
+# check that there is some SNAPSHOT versions to release...
+FROM_COUNT=`git grep "$current_version" | wc -l`
+if [ ${FROM_COUNT} -lt 10 ]; then
+    echo "Only $FROM_COUNT references to $current_version were found in existing poms. As a sanity check we look for at least five of those. Make sure you used the correct 'from' version."
     echo "Searching for -SNAPSHOT in main pom.xml:"
     git grep "\-SNAPSHOT" pom.xml
     exit 1
 fi
+echo "Found $FROM_COUNT occurrences of $current_version in poms..."
 
-echo "Found $FROM_COUNT occurrences of $FROM_VERSION in poms..."
+change_core_version ${FROM_VERSION} ${TO_VERSION}
 
-# Now replace the versions in the poms
-echo ""
-echo "=================================================================================================="
-echo " Replacing $FROM_VERSION with $TO_VERSION in the poms"
-echo "=================================================================================================="
-find . -type f -name "pom.xml" -print0 | xargs -0 -t sed -i "" -e "s/$FROM_VERSION/$TO_VERSION/g"
-echo ""
-echo "=================================================================================================="
-echo " Modified files"
-echo "=================================================================================================="
-git status
 echo ""
 echo "=================================================================================================="
 echo " Remaining -SNAPSHOT versions"
 echo "=================================================================================================="
-git grep "\-SNAPSHOT"
-# User input to verify it was correct
-RESPONSE=""
-while [ "x$RESPONSE" = "x" ]; do
-echo "Do the differences above look correct? (Y/N)"
-read RESPONSE
-if [ "$RESPONSE" = "N" ]; then
-echo "Exiting so you can investigate...."
-exit 1
-fi
-if [ "$RESPONSE" != "Y" ]; then
-echo "Unknown answer '$RESPONSE'"
-RESPONSE=""
-fi
-done
-
-
 echo ""
-echo "=================================================================================================="
-echo " Replacements made "
-echo "=================================================================================================="
-git --no-pager diff
-
-# User input to verify it was correct
-RESPONSE=""
-while [ "x$RESPONSE" = "x" ]; do
-    echo "Do the replacements made above look correct? (Y/N)"
-    read RESPONSE
-    if [ "$RESPONSE" = "N" ]; then
-        echo "Exiting so you can investigate...."
-        exit 1
-    fi
-    if [ "$RESPONSE" != "Y" ]; then
-        echo "Unknown answer '$RESPONSE'"
-        RESPONSE=""
-    fi
-done
+git grep "\-SNAPSHOT"
+prompt_confirm "Do the remaining SNAPSHOTs above look correct?" || exit 1
 
 # Do the build
 echo ""
 echo "=================================================================================================="
-echo " Doing the build "
+echo " Doing the WildFly Core build "
 echo "=================================================================================================="
-
 #Run the build with all the flags set
-
-# !!!!!!!!
-# !!!! TODO get rid of -Dmaven.test.failureignore   !!!!
-# Or we will never get an error. Instead we should patch the four tests failing from running under root with
-# Assume.assumeFalse(System.hasProperty("wildfly.docker.release")
-#
-# The -Dwildfly.docker.release property is to conditionally ignore tests which assume not running as root
-mvn clean install -Dwildfly.docker.release -Pjboss-release -Prelease -DallTests --fail-at-end -Dmaven.test.failure.ignore
-
+mvn clean install -Pjboss-release -Prelease -DallTests --fail-at-end
 BUILD_STATUS=$?
-if [ $BUILD_STATUS != 0 ]; then
+if [ ${BUILD_STATUS} != 0 ]; then
     echo "=================================================================================================="
     echo " Build failed "
     echo "  ./run-docker-ls.sh <dir>"
     echo "and"
     echo "  ./run-docker-more.sh <dir>"
     echo "from another terminal window to get more information about the failures."
-    echo "Then enter 'Y' to proceed with the release, or 'N' to abort:"
     echo "=================================================================================================="
-
-    RESPONSE=""
-    while [ "x$RESPONSE" = "x" ]; do
-        read RESPONSE
-        if [ "$RESPONSE" = "N" ]; then
-            exit $BUILD_STATUS
-        fi
-        if [ "$RESPONSE" != "Y" ]; then
-            echo "Unknown answer '$RESPONSE'. Enter 'Y' to proceed with the release, or 'N' to abort:"
-            RESPONSE=""
-        fi
-    done
+    prompt_confirm "Are you sure you want to continue the release process?" || exit 1
 fi
 
-
-# TODO remove this
-exit 1
-
+# Any error in the script will now exit the script
+set -e
 
 echo ""
 echo "=================================================================================================="
@@ -175,30 +216,20 @@ echo " Verifying WildFly Full still builds"
 echo "=================================================================================================="
 
 # Refresh WildFly to make sure we have the latest
-cd ../wildfly
-git reset --hard HEAD^
-git checkout master
-git fetch origin
-git reset --hard origin/master
 cd ..
-# Build WildFly skipping tests, but overriding the core version
-mvn clean install -DallTests -DskipTests -Dversion.org.wildfly.core=$TO_VERSION
-BUILD_STATUS=$?
-if [ $BUILD_STATUS != 0 ]; then
-    exit $BUILD_STATUS
-fi
+git_clone_and_update ${GITHUB_USER} wildfly
+cd wildfly
 
+# Build WildFly skipping tests, but overriding the core version
+mvn clean install -DallTests -DskipTests -Dversion.org.wildfly.core=${TO_VERSION}
 
 echo ""
 echo "=================================================================================================="
-echo " Committing the wildfly-core changes, and pushing to the upstream $BRANCH_NAME branch"
+echo " Committing the wildfly-core changes, and pushing to the ${GITHUB_USER}/${BRANCH_NAME} branch"
 echo "=================================================================================================="
 cd ../wildfly-core
 git commit -am "Prepare for the $TO_VERSION release"
-git push origin $BRANCH_NAME
-git checkout master
-git merge --ff-only $BRANCH_NAME
-
+git push ${GITHUB_USER} ${BRANCH_NAME}
 
 echo ""
 echo "=================================================================================================="
@@ -207,69 +238,53 @@ echo "==========================================================================
 
 # Deploy the core release to the staging repository
 mvn deploy -Pjboss-release -Prelease -DallTests -DskipTests
-BUILD_STATUS=$?
-if [ $BUILD_STATUS != 0 ]; then
-    exit $BUILD_STATUS
-fi
 
 # Action needed to close the repository
 echo ""
 echo "=================================================================================================="
-echo "Now close the staging repository on nexus, and release it."
+echo "Now close the staging repository on Nexus."
+echo "DO NOT RELEASE IT! WildFly will be tested with the version in the staging repository"
 echo "=================================================================================================="
-RESPONSE=""
-while [ "x$RESPONSE" = "x" ]; do
-    echo "Once it has been released enter 'Y' to continue performing the tag. To exit enter 'N':"
-    read RESPONSE
-    if [ "$RESPONSE" = "N" ]; then
-        echo "Exiting so you can investigate...."
-        exit 1
-    fi
-    if [ "$RESPONSE" != "Y" ]; then
-        echo "Unknown answer '$RESPONSE'"
-        RESPONSE=""
-    fi
-done
-
-
+prompt_confirm "Has the staging repository been closed in Nexus?" || exit 1
 
 # Blow away the wildfly core artifacts and rebuild full.
 echo ""
 echo "=================================================================================================="
 echo "Deleting all wildfly-core artifacts from the local maven repository, and rebuilding full."
 echo "=================================================================================================="
-rm -rf /root/.m2/repository/org/wildfly/core
+rm -rf $HOME/.m2/repository/org/wildfly/core
 cd ../wildfly
-mvn install -DallTests -DskipTests -Dversion.org.wildfly.core=$TO_VERSION
-BUILD_STATUS=$?
-if [ $BUILD_STATUS != 0 ]; then
-    exit $BUILD_STATUS
-fi
+# Use the staged-releases profile to use the Core release that is deployed in Nexus staging repository
+mvn install -DallTests -DskipTests -Pstaged-releases -Dversion.org.wildfly.core=${TO_VERSION}
 
 echo ""
 echo "=================================================================================================="
-echo "Push the tag"
+echo "Create the ${TO_VERSION} tag and push it to ${GITHUB_USER}"
 echo "=================================================================================================="
 cd ../wildfly-core
-git tag $TO_VERSION
-BUILD_STATUS=$?
-if [ $BUILD_STATUS != 0 ]; then
-    exit $BUILD_STATUS
-fi
-git push origin master --tags
-BUILD_STATUS=$?
-if [ $BUILD_STATUS != 0 ]; then
-    exit $BUILD_STATUS
-fi
+git tag ${TO_VERSION}
+git push ${GITHUB_USER} ${TO_VERSION}
+
+echo ""
+echo "=================================================================================================="
+echo "Prepare the next release ${NEXT_VERSION} and push it to ${GITHUB_USER}/${BRANCH_NAME}"
+echo "=================================================================================================="
+# Now replace the versions in the poms for the next release
+change_core_version ${TO_VERSION} ${NEXT_VERSION}
+git commit -am "Next is ${NEXT_VERSION} release"
+git push ${GITHUB_USER} ${BRANCH_NAME}
 
 echo ""
 echo "=================================================================================================="
 echo "All Done!!! Well, ALMOST...."
 echo "=================================================================================================="
 echo "See https://developer.jboss.org/wiki/WildFlyCoreReleaseProcess"
-echo "1) Now open a WildFly pull request upgrading the wildfly-core version to $TO_VERSION"
-echo "2) Update wildfly-core master to the next -SNAPSHOT version"
-echo "3) Cleanup/release Jira, and add the next fix version"
-echo "4) Update the CI jobs"
-
-
+echo "1) Push from ${GITHUB_USER_REPO} to the wildfly repository:"
+echo "   * the ${TO_VERSION} tag"
+echo "       git push upstream ${TO_VERSION}"
+echo "   * the ${BRANCH_NAME} branch to wildfly master branch"
+echo "       git push upstream ${BRANCH_NAME}:master"
+echo "2) Release WildFly Core staging repository in Nexus"
+echo "3) Now open a WildFly pull request upgrading the wildfly-core version to ${TO_VERSION}"
+echo "4) Cleanup/release JIRA, and add the next fix version"
+echo "5) Update the CI jobs"
