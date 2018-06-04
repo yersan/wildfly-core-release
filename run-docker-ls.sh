@@ -4,5 +4,5 @@ CHECKOUTS_FOLDER=/home/wfcore/checkouts
 
 docker run \
 	-v  wfcore-release-checkouts:$CHECKOUTS_FOLDER \
-	-it wildfly-core-build-temp \
+	-it wildfly-core-release \
 	/home/wfcore/file-util.sh "ls" $1
