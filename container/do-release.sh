@@ -229,7 +229,8 @@ echo " Committing the wildfly-core changes, and pushing to the ${GITHUB_USER}/${
 echo "=================================================================================================="
 cd ../wildfly-core
 git commit -am "Prepare for the $TO_VERSION release"
-git push ${GITHUB_USER} ${BRANCH_NAME}
+# Force push to overwrite any previous attempt to release the version
+git push -f ${GITHUB_USER} ${BRANCH_NAME}
 
 echo ""
 echo "=================================================================================================="
@@ -262,8 +263,9 @@ echo "==========================================================================
 echo "Create the ${TO_VERSION} tag and push it to ${GITHUB_USER}"
 echo "=================================================================================================="
 cd ../wildfly-core
-git tag ${TO_VERSION}
-git push ${GITHUB_USER} ${TO_VERSION}
+# Force the tag and push to overwrite any previous attempt to release the version
+git tag -f ${TO_VERSION}
+git push -f ${GITHUB_USER} ${TO_VERSION}
 
 echo ""
 echo "=================================================================================================="
