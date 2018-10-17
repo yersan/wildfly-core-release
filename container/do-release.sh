@@ -62,7 +62,7 @@ git_clone_and_update() {
     echo "=================================================================================================="
     echo "The ${project} checkout folder does not exist. Cloning ${upstream_url}"
     echo "=================================================================================================="
-    git clone --depth 5 $upstream_url
+    git clone $upstream_url
     echo "===================================================="
     echo "Adding the remote ${user} for ${user_url} repository"
     echo "===================================================="
