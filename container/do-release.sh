@@ -45,15 +45,17 @@ prompt_confirm() {
 }
 
 ################################
-# Clone a Git repo from the wildfly org and update to latest master branch
+# Clone a Git repo from the wildfly org and update to latest main branch
 # Add a remote endpoint for the user GitHub repository
 #
 # 1st parameter is the user name of the GitHub repo (e.g. jmesnil or kabir)
 # 2nd parameter is the name of the project (e.g. wildfly-core)
+# 3rd parameter is the branch to update of the project (e.g. main)
 ################################
 git_clone_and_update() {
   user=$1
   project=$2
+  branch=$3
 
   #Check if the project has been checked out and clone or update
   if [ ! -d "${HOME}/checkouts/${project}" ]; then
@@ -71,12 +73,12 @@ git_clone_and_update() {
     cd ..
   else
     echo "=================================================================================================="
-    echo "The ${project} checkout folder exists. Refreshing the latest"
+    echo "The ${project} checkout folder exists. Refreshing the latest from ${branch} branch"
     echo "=================================================================================================="
     cd ${project}
-    git checkout master
+    git checkout ${branch}
     git fetch origin
-    git reset --hard origin/master
+    git reset --hard origin/${branch}
     cd ..
   fi
 }
@@ -97,7 +99,7 @@ change_core_version() {
   echo " Replacing ${current_version} with ${next_version} in the poms"
   echo "=================================================================================================="
   echo ""
-  find . -type f -name "pom.xml" -print0 | xargs -0 -t sed -i -e "s/${current_version}/${next_version}/g"
+  find . -type f -name "pom.xml" -print0 | xargs -0 -t sed -i "s/${current_version}/${next_version}/g"
   echo ""
   echo "=================================================================================================="
   echo " Modified files"
@@ -158,8 +160,8 @@ cd $HOME/checkouts
 # Start SSH agent to avoid typing everytime the SSH passphrase
 eval `ssh-agent -s`
 
-git_clone_and_update ${GITHUB_USER} "wildfly"
-git_clone_and_update ${GITHUB_USER} "wildfly-core"
+git_clone_and_update ${GITHUB_USER} "wildfly" "main"
+git_clone_and_update ${GITHUB_USER} "wildfly-core"  "main"
 
 cd wildfly-core
 BRANCH_NAME=release_wildfly-core_${TO_VERSION}
@@ -217,7 +219,7 @@ echo "==========================================================================
 
 # Refresh WildFly to make sure we have the latest
 cd ..
-git_clone_and_update ${GITHUB_USER} wildfly
+git_clone_and_update ${GITHUB_USER} wildfly "main"
 cd wildfly
 
 # Build WildFly skipping tests, but overriding the core version
@@ -284,8 +286,8 @@ echo "See https://developer.jboss.org/wiki/WildFlyCoreReleaseProcess"
 echo "1) Push from ${GITHUB_USER_REPO} to the wildfly repository:"
 echo "   * the ${TO_VERSION} tag"
 echo "       git push upstream ${TO_VERSION}"
-echo "   * the ${BRANCH_NAME} branch to wildfly master branch"
-echo "       git push upstream ${BRANCH_NAME}:master"
+echo "   * the ${BRANCH_NAME} branch to wildfly main branch"
+echo "       git push upstream ${BRANCH_NAME}:main"
 echo "2) Release WildFly Core staging repository in Nexus"
 echo "3) Now open a WildFly pull request upgrading the wildfly-core version to ${TO_VERSION}"
 echo "4) Cleanup/release JIRA, and add the next fix version"
