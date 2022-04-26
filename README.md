@@ -4,7 +4,7 @@ WildFly Core release process requires a significant amount of memory.
 Please ensure that your Docker can have 4 GiB of memory.
 
 First you need to build the image by starting up your Docker daemon, and executing
-    `docker build -t wildfly-core-release .`
+    `docker build -t jmesnil/wildfly-core-release .`
 Whenever the contents of this git repository are updated you will need to rebuild the image.
 
 To speed things up when running the container we do some volume mapping, so that we don't have to repopulate everything from scratch each time we run a build. Some of these mappings require persistent docker volumes. The `run-docker-release.sh` script does all the passing of parameters, but I will list them here:
@@ -15,14 +15,13 @@ To speed things up when running the container we do some volume mapping, so that
     * `	-v ~/.ssh:/root/.ssh` - maps your local `~/.ssh` folder to Docker's `/home/wfcore/.ssh` folder so that we can push to GitHub.
     * `	-it wildfly-core-release` - specifies the name of the image to use when running the container.
 
-
 To do a release you run this script:
-	`./run-docker-release.sh <SNAPSHOT_VERSION> <RELEASE_VERSION> <NEXT_SNAPSHOT_VERSION> <GITHUB_USER>`
+	`./run-docker-release.sh <SNAPSHOT_VERSION> <RELEASE_VERSION> <NEXT_SNAPSHOT_VERSION> <GITHUB_USER> <WILDFLY_CORE_BRANCH> <WILDFLY_BRANCH>`
 
-For example, if Core is at 6.0.0.Alpha1-SNAPSHOT, the command to release 6.0.0.Alpha1 and prepare for the next snapshot at 6.0.0.Alpha2-SNAPSHOT is:
+For example, if Core is at 19.0.0.Beta1-SNAPSHOT, the command to release 19.0.0.Beta1 and prepare for the next snapshot at 19.0.0.Beta2-SNAPSHOT is:
 
 ```
-./run-docker-release.sh 6.0.0.Alpha1-SNAPSHOT 6.0.0.Alpha1 6.0.0.Alpha2-SNAPSHOT jmesnil
+./run-docker-release.sh 19.0.0.Beta1-SNAPSHOT 19.0.0.Beta1 19.0.0.Beta2-SNAPSHOT jmesnil main main
 ```
 
 where `jmesnil` is the GitHub user that is releasing WildFly Core.

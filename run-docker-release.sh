@@ -8,4 +8,4 @@ docker run \
 	-v ~/.gitconfig:/home/wfcore/.gitconfig \
 	-v ~/.ssh:/home/wfcore/.ssh \
 	-it jmesnil/wildfly-core-release \
-	/home/wfcore/do-release.sh $1 $2 $3 $4
+	/home/wfcore/do-release.sh $1 $2 $3 $4 $5 $6

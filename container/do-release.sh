@@ -117,6 +117,8 @@ NEXT_VERSION=$3
 GITHUB_USER=$4
 GITHUB_USER_REPO=git@github.com:${GITHUB_USER}
 OFFICIAL_GITHUB_REPO=git@github.com:wildfly
+WILDFLY_CORE_BRANCH=$5
+WILDFLY_BRANCH=$6
 
 cd $HOME
 if [ "x$FROM_VERSION" = "x" ]; then
@@ -160,8 +162,8 @@ cd $HOME/checkouts
 # Start SSH agent to avoid typing everytime the SSH passphrase
 eval `ssh-agent -s`
 
-git_clone_and_update ${GITHUB_USER} "wildfly" "main"
-git_clone_and_update ${GITHUB_USER} "wildfly-core"  "main"
+git_clone_and_update ${GITHUB_USER} "wildfly" ${WILDFLY_BRANCH}
+git_clone_and_update ${GITHUB_USER} "wildfly-core" ${WILDFLY_CORE_BRANCH}
 
 cd wildfly-core
 BRANCH_NAME=release_wildfly-core_${TO_VERSION}
@@ -219,7 +221,7 @@ echo "==========================================================================
 
 # Refresh WildFly to make sure we have the latest
 cd ..
-git_clone_and_update ${GITHUB_USER} wildfly "main"
+git_clone_and_update ${GITHUB_USER} wildfly ${WILDFLY_BRANCH}
 cd wildfly
 
 # Build WildFly skipping tests, but overriding the core version
@@ -227,12 +229,17 @@ mvn clean install -DallTests -DskipTests -Dversion.org.wildfly.core=${TO_VERSION
 
 echo ""
 echo "=================================================================================================="
-echo " Committing the wildfly-core changes, and pushing to the ${GITHUB_USER}/${BRANCH_NAME} branch"
+echo " Committing the wildfly-core changes "
+echo " Pushing the branch ${GITHUB_USER}/${BRANCH_NAME}"
+echo " Pushing the tag ${GITHUB_USER}/${TO_VERSION}"
 echo "=================================================================================================="
 cd ../wildfly-core
 git commit -am "Prepare for the $TO_VERSION release"
 # Force push to overwrite any previous attempt to release the version
 git push -f ${GITHUB_USER} ${BRANCH_NAME}
+# Force the tag and push to overwrite any previous attempt to release the version
+git tag -f ${TO_VERSION}
+git push -f ${GITHUB_USER} ${TO_VERSION}
 
 echo ""
 echo "=================================================================================================="
@@ -259,15 +266,6 @@ rm -rf $HOME/.m2/repository/org/wildfly/core
 cd ../wildfly
 # Use the staged-releases profile to use the Core release that is deployed in Nexus staging repository
 mvn install -DallTests -DskipTests -Pstaged-releases -Dversion.org.wildfly.core=${TO_VERSION}
-
-echo ""
-echo "=================================================================================================="
-echo "Create the ${TO_VERSION} tag and push it to ${GITHUB_USER}"
-echo "=================================================================================================="
-cd ../wildfly-core
-# Force the tag and push to overwrite any previous attempt to release the version
-git tag -f ${TO_VERSION}
-git push -f ${GITHUB_USER} ${TO_VERSION}
 
 echo ""
 echo "=================================================================================================="
