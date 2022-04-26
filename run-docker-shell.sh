@@ -7,5 +7,5 @@ docker run \
 	-v wfcore-release-checkouts:/home/wfcore/checkouts \
 	-v ~/.gitconfig:/home/wfcore/.gitconfig \
 	-v ~/.ssh:/home/wfcore/.ssh \
-	-it jmesnil/wildfly-core-release \
+	-it jmesnil/wildfly-core-release:11 \
   bash

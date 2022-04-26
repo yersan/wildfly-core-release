@@ -1,5 +1,5 @@
 # Base on the OpenJDK 11 image
-FROM openjdk:8-jdk
+FROM openjdk:11-jdk
 
 RUN apt-get update && apt-get -y --no-install-recommends install \
     ca-certificates \
