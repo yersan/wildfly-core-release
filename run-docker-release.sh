@@ -7,5 +7,5 @@ docker run \
 	-v wfcore-release-checkouts:/home/wfcore/checkouts \
 	-v ~/.gitconfig:/home/wfcore/.gitconfig \
 	-v ~/.ssh:/home/wfcore/.ssh \
-	-it jmesnil/wildfly-core-release:11 \
+	-it "${USER}/wildfly-core-release:11" \
 	/home/wfcore/do-release.sh $1 $2 $3 $4 $5 $6

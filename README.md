@@ -4,7 +4,7 @@ WildFly Core release process requires a significant amount of memory.
 Please ensure that your Docker can have 4 GiB of memory.
 
 First you need to build the image by starting up your Docker daemon, and executing
-    `docker build -t jmesnil/wildfly-core-release:11 .`
+    `docker build -t ${USER}/wildfly-core-release:11 .`
 Whenever the contents of this git repository are updated you will need to rebuild the image.
 
 To speed things up when running the container we do some volume mapping, so that we don't have to repopulate everything from scratch each time we run a build. Some of these mappings require persistent docker volumes. The `run-docker-release.sh` script does all the passing of parameters, but I will list them here:
