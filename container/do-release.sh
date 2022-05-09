@@ -142,6 +142,11 @@ if [ "x$GITHUB_USER" = "x" ]; then
 fi
 
 echo "=================================================================================================="
+echo "Current Env:"
+env
+echo "=================================================================================================="
+
+echo "=================================================================================================="
 echo "You are preparing to release WildFly Core ${TO_VERSION} at ${GITHUB_USER_REPO}"
 echo "    from ${FROM_VERSION}"
 echo "    and prepare next release ${NEXT_VERSION}"
@@ -271,6 +276,7 @@ echo ""
 echo "=================================================================================================="
 echo "Prepare the next release ${NEXT_VERSION} and push it to ${GITHUB_USER}/${BRANCH_NAME}"
 echo "=================================================================================================="
+cd ../wildfly-core
 # Now replace the versions in the poms for the next release
 change_core_version ${TO_VERSION} ${NEXT_VERSION}
 git commit -am "Next is ${NEXT_VERSION} release"
