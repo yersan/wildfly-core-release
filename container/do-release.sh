@@ -123,7 +123,6 @@ TO_VERSION=$2
 NEXT_VERSION=$3
 GITHUB_USER=$4
 GITHUB_USER_REPO=git@github.com:${GITHUB_USER}
-WILDFLY_CORE_OFFICIAL_GITHUB_REPO=git@github.com:wildfly
 WILDFLY_CORE_BRANCH=$5
 WILDFLY_BRANCH=$6
 # This environment variable can be used in case you need to integrate wildfly-core changes with other commits when you
@@ -131,7 +130,8 @@ WILDFLY_BRANCH=$6
 # probably rebased on top of the latest wildfly#main branch. This topic branch could contain other WFLY Jiras PRs that
 # need to be merged together with the wildfly-core upgrade. When using it, remember to rebase your topic branch on top of
 # the latest wildfly#main
-WILDFLY_OFFICIAL_GITHUB_REPO=${7:-'git@github.com:wildfly'}
+WILDFLY_CORE_OFFICIAL_GITHUB_REPO=${7:-'git@github.com:wildfly'}
+WILDFLY_OFFICIAL_GITHUB_REPO=${8:-'git@github.com:wildfly'}
 
 cd $HOME
 if [ "x$FROM_VERSION" = "x" ]; then
