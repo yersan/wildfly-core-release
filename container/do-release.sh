@@ -57,17 +57,24 @@ git_clone_and_update() {
   project=$2
   branch=$3
 
+  if [ "${project}" == "wildfly" ]; then
+    echo "Using WildFly Repo: ${WILDFLY_OFFICIAL_GITHUB_REPO}"
+    upstream_url="${WILDFLY_OFFICIAL_GITHUB_REPO}/${project}.git"
+  else
+    echo "Using Core WildFly Repo: ${WILDFLY_CORE_OFFICIAL_GITHUB_REPO}"
+    upstream_url="${WILDFLY_CORE_OFFICIAL_GITHUB_REPO}/${project}.git"
+  fi
+
   #Check if the project has been checked out and clone or update
   if [ ! -d "${HOME}/checkouts/${project}" ]; then
-    upstream_url="${OFFICIAL_GITHUB_REPO}/${project}.git"
     user_url="git@github.com:${user}/${project}.git"
     echo "=================================================================================================="
     echo "The ${project} checkout folder does not exist. Cloning ${upstream_url}"
     echo "=================================================================================================="
     git clone $upstream_url
-    echo "===================================================="
+    echo "=================================================================================================="
     echo "Adding the remote ${user} for ${user_url} repository"
-    echo "===================================================="
+    echo "=================================================================================================="
     cd ${project}
     git remote add ${user} ${user_url}
     cd ..
@@ -116,9 +123,15 @@ TO_VERSION=$2
 NEXT_VERSION=$3
 GITHUB_USER=$4
 GITHUB_USER_REPO=git@github.com:${GITHUB_USER}
-OFFICIAL_GITHUB_REPO=git@github.com:wildfly
 WILDFLY_CORE_BRANCH=$5
 WILDFLY_BRANCH=$6
+# This environment variable can be used in case you need to integrate wildfly-core changes with other commits when you
+# when upgrading the wildfly-core version on full. You could use this environment variable to point out to a topic branch
+# probably rebased on top of the latest wildfly#main branch. This topic branch could contain other WFLY Jiras PRs that
+# need to be merged together with the wildfly-core upgrade. When using it, remember to rebase your topic branch on top of
+# the latest wildfly#main
+WILDFLY_CORE_OFFICIAL_GITHUB_REPO=${7:-'git@github.com:wildfly'}
+WILDFLY_OFFICIAL_GITHUB_REPO=${8:-'git@github.com:wildfly'}
 
 cd $HOME
 if [ "x$FROM_VERSION" = "x" ]; then
@@ -144,6 +157,15 @@ fi
 echo "=================================================================================================="
 echo "Current Env:"
 env
+echo "FROM_VERSION=$FROM_VERSION"
+echo "TO_VERSION=$TO_VERSION"
+echo "NEXT_VERSION=$NEXT_VERSION"
+echo "GITHUB_USER=$GITHUB_USER"
+echo "GITHUB_USER_REPO=$GITHUB_USER_REPO"
+echo "WILDFLY_CORE_OFFICIAL_GITHUB_REPO=$WILDFLY_CORE_OFFICIAL_GITHUB_REPO"
+echo "WILDFLY_OFFICIAL_GITHUB_REPO=$WILDFLY_OFFICIAL_GITHUB_REPO"
+echo "WILDFLY_CORE_BRANCH=$WILDFLY_CORE_BRANCH"
+echo "WILDFLY_BRANCH=$WILDFLY_BRANCH"
 echo "=================================================================================================="
 
 echo "=================================================================================================="
@@ -167,10 +189,22 @@ cd $HOME/checkouts
 # Start SSH agent to avoid typing everytime the SSH passphrase
 eval `ssh-agent -s`
 
+echo "=================================================================================================="
+echo "Clone WildFly Branch ${WILDFLY_BRANCH}"
 git_clone_and_update ${GITHUB_USER} "wildfly" ${WILDFLY_BRANCH}
-git_clone_and_update ${GITHUB_USER} "wildfly-core" ${WILDFLY_CORE_BRANCH}
+echo "=================================================================================================="
+cd wildfly
+git fetch origin ${WILDFLY_BRANCH}
+git checkout --track origin/${WILDFLY_BRANCH}
+git status
+cd ..
 
+echo "=================================================================================================="
+echo "Clone WildFly Core Branch ${WILDFLY_CORE_BRANCH}"
+git_clone_and_update ${GITHUB_USER} "wildfly-core" ${WILDFLY_CORE_BRANCH}
+echo "=================================================================================================="
 cd wildfly-core
+git checkout ${WILDFLY_CORE_BRANCH}
 BRANCH_NAME=release_wildfly-core_${TO_VERSION}
 #TODO this will give an error, but nothing serious if $BRANCH_NAME does not exist. It would be nice though to check somehow and only delete if it exists
 git branch -D ${BRANCH_NAME}
@@ -187,17 +221,18 @@ if [ ${FROM_COUNT} -lt 10 ]; then
 fi
 echo "Found $FROM_COUNT occurrences of $current_version in poms..."
 
-change_core_version ${FROM_VERSION} ${TO_VERSION}
 
 echo ""
 echo "=================================================================================================="
 echo " Remaining -SNAPSHOT versions"
 echo "=================================================================================================="
 echo ""
+
+change_core_version ${FROM_VERSION} ${TO_VERSION}
+
 git grep "\-SNAPSHOT"
 prompt_confirm "Do the remaining SNAPSHOTs above look correct?" || exit 1
 
-# Do the build
 echo ""
 echo "=================================================================================================="
 echo " Doing the WildFly Core build "
@@ -228,6 +263,8 @@ echo "==========================================================================
 cd ..
 git_clone_and_update ${GITHUB_USER} wildfly ${WILDFLY_BRANCH}
 cd wildfly
+git checkout ${WILDFLY_BRANCH}
+git status
 
 # Build WildFly skipping tests, but overriding the core version
 mvn clean install -DallTests -DskipTests -Dversion.org.wildfly.core=${TO_VERSION}
@@ -239,6 +276,8 @@ echo " Pushing the branch ${GITHUB_USER}/${BRANCH_NAME}"
 echo " Pushing the tag ${GITHUB_USER}/${TO_VERSION}"
 echo "=================================================================================================="
 cd ../wildfly-core
+git status
+
 git commit -am "Prepare for the $TO_VERSION release"
 # Force push to overwrite any previous attempt to release the version
 git push -f ${GITHUB_USER} ${BRANCH_NAME}
