@@ -7,5 +7,6 @@ docker run \
 	-v wfcore-release-checkouts:/home/wfcore/checkouts \
 	-v ~/.gitconfig:/home/wfcore/.gitconfig \
 	-v ~/.ssh:/home/wfcore/.ssh \
+    -v ~/.gnupg:/home/wfcore/.gnupg \
 	-it ${USER}/wildfly-core-release:11 \
   bash
