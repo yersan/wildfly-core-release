@@ -5,11 +5,6 @@ RUN apt-get update && apt-get -y --no-install-recommends install \
     ca-certificates \
     curl
 
-RUN curl -o /usr/local/bin/gosu -SL "https://github.com/tianon/gosu/releases/download/1.4/gosu-$(dpkg --print-architecture)" \
-    && curl -o /usr/local/bin/gosu.asc -SL "https://github.com/tianon/gosu/releases/download/1.4/gosu-$(dpkg --print-architecture).asc" \
-    && rm /usr/local/bin/gosu.asc \
-    && chmod +x /usr/local/bin/gosu
-
 RUN	wget http://apache.mirror.anlx.net/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz && \
     tar -zxf apache-maven-3.6.3-bin.tar.gz && \
     cp -R apache-maven-3.6.3 /usr/local && \
@@ -18,10 +13,14 @@ RUN	wget http://apache.mirror.anlx.net/maven/maven-3/3.6.3/binaries/apache-maven
     \
 	apt-get purge -y --auto-remove $fetchDeps
 
+ARG USER_ID
+# Require USER_ID build argument
+RUN test -n "${USER_ID}"
+# Create wfcore user, using same uid as host user
+RUN useradd --shell /bin/bash -u ${USER_ID} -o -c "" -m wfcore
+
 #Add the script that will do the work
 ADD container/clean-volume.sh /home/wfcore/clean-volume.sh
 ADD container/do-release.sh /home/wfcore/do-release.sh
 ADD container/file-util.sh /home/wfcore/file-util.sh
 
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
