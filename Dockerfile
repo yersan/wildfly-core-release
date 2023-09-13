@@ -10,10 +10,12 @@ RUN curl -o /usr/local/bin/gosu -SL "https://github.com/tianon/gosu/releases/dow
     && rm /usr/local/bin/gosu.asc \
     && chmod +x /usr/local/bin/gosu
 
-RUN	wget http://apache.mirror.anlx.net/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz && \
-    tar -zxf apache-maven-3.6.3-bin.tar.gz && \
-    cp -R apache-maven-3.6.3 /usr/local && \
-    ln -s /usr/local/apache-maven-3.6.3/bin/mvn /usr/bin/mvn && \
+ARG MAVEN_HOST="dlcdn.apache.org"
+ARG MAVEN_VERSION="3.9.4"
+RUN	wget http://${MAVEN_HOST}/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz && \
+    tar -zxf apache-maven-${MAVEN_VERSION}-bin.tar.gz && \
+    cp -R apache-maven-${MAVEN_VERSION} /usr/local && \
+    ln -s /usr/local/apache-maven-${MAVEN_VERSION}/bin/mvn /usr/bin/mvn && \
     apt-get install git;\
     \
 	apt-get purge -y --auto-remove $fetchDeps
