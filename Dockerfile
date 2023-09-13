@@ -5,11 +5,6 @@ RUN apt-get update && apt-get -y --no-install-recommends install \
     ca-certificates \
     curl
 
-RUN curl -o /usr/local/bin/gosu -SL "https://github.com/tianon/gosu/releases/download/1.4/gosu-$(dpkg --print-architecture)" \
-    && curl -o /usr/local/bin/gosu.asc -SL "https://github.com/tianon/gosu/releases/download/1.4/gosu-$(dpkg --print-architecture).asc" \
-    && rm /usr/local/bin/gosu.asc \
-    && chmod +x /usr/local/bin/gosu
-
 ARG MAVEN_HOST="dlcdn.apache.org"
 ARG MAVEN_VERSION="3.9.4"
 RUN	wget http://${MAVEN_HOST}/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz && \
