@@ -132,6 +132,8 @@ WILDFLY_BRANCH=$6
 # the latest wildfly#main
 WILDFLY_CORE_OFFICIAL_GITHUB_REPO=${7:-'git@github.com:wildfly'}
 WILDFLY_OFFICIAL_GITHUB_REPO=${8:-'git@github.com:wildfly'}
+# Needed for gnupg pinentry when signing commits
+GPG_TTY=$(tty)
 
 cd $HOME
 if [ "x$FROM_VERSION" = "x" ]; then
