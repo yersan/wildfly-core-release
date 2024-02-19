@@ -168,6 +168,7 @@ echo "WILDFLY_CORE_OFFICIAL_GITHUB_REPO=$WILDFLY_CORE_OFFICIAL_GITHUB_REPO"
 echo "WILDFLY_OFFICIAL_GITHUB_REPO=$WILDFLY_OFFICIAL_GITHUB_REPO"
 echo "WILDFLY_CORE_BRANCH=$WILDFLY_CORE_BRANCH"
 echo "WILDFLY_BRANCH=$WILDFLY_BRANCH"
+mvn -version
 echo "=================================================================================================="
 
 echo "=================================================================================================="
